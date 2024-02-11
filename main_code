@@ -1,0 +1,27 @@
+import requests
+import pandas as pd
+
+url = "https://api-football-v1.p.rapidapi.com/v3/standings"
+
+querystring = {"season":"2023","league":"383"}
+
+headers = {
+	"X-RapidAPI-Key": "your_api_key",
+	"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+}
+
+standings = requests.get(url, headers=headers, params=querystring)
+
+standing_df = pd.DataFrame()
+raw_data = standings.json()['response'][0]['league']['standings'][0]
+for i in raw_data:
+  standing_df.loc[i['rank'], 'team'] = i['team']['name']
+  standing_df.loc[i['rank'], 'points'] = i['points']
+
+standing_df = standing_df[standing_df['points'] < 36].copy()
+standing_df['points/sum'] = standing_df['points'].apply(lambda x: x / standing_df['points'].sum())
+standing_df['points/36'] = standing_df['points'].apply(lambda x: x / 36)
+standing_df['weighted_percentage'] = standing_df['points/sum'] * standing_df['points/36']
+standing_df['percentage_to_stay'] = standing_df['weighted_percentage'].apply(lambda x: x / standing_df['weighted_percentage'].sum())
+standing_df['points'] = standing_df['points'].astype(int)
+standing_df[['team', 'points', 'percentage_to_stay']].rename(columns={'team': 'Team', 'points': 'Points', 'percentage_to_stay': 'Percentage to stay'})
