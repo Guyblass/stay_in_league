@@ -1,27 +1,43 @@
-import requests
-import pandas as pd
+import requests  # Importing the requests library for making HTTP requests
+import pandas as pd  # Importing pandas library for data manipulation and analysis
 
+# Define the URL for the standings API
 url = "https://api-football-v1.p.rapidapi.com/v3/standings"
 
+# Define query parameters for the API request
 querystring = {"season":"2023","league":"383"}
 
+# Define headers for the API request
 headers = {
-	"X-RapidAPI-Key": "your_api_key",
-	"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+    "X-RapidAPI-Key": "your_api_key",  # Replace "your_api_key" with your actual API key
+    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
 }
 
+# Make a GET request to the standings API
 standings = requests.get(url, headers=headers, params=querystring)
 
+# Create an empty DataFrame to store the standings data
 standing_df = pd.DataFrame()
-raw_data = standings.json()['response'][0]['league']['standings'][0]
-for i in raw_data:
-  standing_df.loc[i['rank'], 'team'] = i['team']['name']
-  standing_df.loc[i['rank'], 'points'] = i['points']
 
+# Extract raw data from the API response
+raw_data = standings.json()['response'][0]['league']['standings'][0]
+
+# Iterate over the raw data and populate the DataFrame
+for i in raw_data:
+    standing_df.loc[i['rank'], 'team'] = i['team']['name']  # Populate team names
+    standing_df.loc[i['rank'], 'points'] = i['points']      # Populate points
+
+# Filter the DataFrame to include teams with less than 36 points
 standing_df = standing_df[standing_df['points'] < 36].copy()
+
+# Calculate additional columns based on points
 standing_df['points/sum'] = standing_df['points'].apply(lambda x: x / standing_df['points'].sum())
 standing_df['points/36'] = standing_df['points'].apply(lambda x: x / 36)
 standing_df['weighted_percentage'] = standing_df['points/sum'] * standing_df['points/36']
 standing_df['percentage_to_stay'] = standing_df['weighted_percentage'].apply(lambda x: x / standing_df['weighted_percentage'].sum())
+
+# Convert points column to integer type
 standing_df['points'] = standing_df['points'].astype(int)
+
+# Rename columns for clarity
 standing_df[['team', 'points', 'percentage_to_stay']].rename(columns={'team': 'Team', 'points': 'Points', 'percentage_to_stay': 'Percentage to stay'})
